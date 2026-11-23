@@ -4,11 +4,11 @@
 #
 # GarudaPanel installer (all-in-one mode).
 #
-#   curl -fsSL https://get.garudapanel.my.id | sudo bash
-#   curl -fsSL https://get.garudapanel.my.id | sudo bash -s -- --check
+#   curl -fsSL https://raw.githubusercontent.com/Nizwarax/garudapanel-installer/main/garudapanel-installer.sh | sudo bash
+#   curl -fsSL https://raw.githubusercontent.com/Nizwarax/garudapanel-installer/main/garudapanel-installer.sh | sudo bash -s -- --check
 #   sudo ./install.sh --bundle garudapanel-<version>-linux-<arch>.tar.gz
 #
-# Online, it downloads a release from the project's release server and
+# Online, it downloads a release from this GitHub mirror and
 # installs it only when the Ed25519 signature of its SHA256SUMS verifies
 # with the key below and the bundle matches SHA256SUMS. With --bundle it
 # installs a local bundle (offline; SHA256SUMS, and SHA256SUMS.sig when the
@@ -18,7 +18,13 @@
 set -euo pipefail
 umask 022
 
-RELEASES=${GARUDAPANEL_RELEASES:-https://garudapanel.my.id/releases}
+if [ -n "${GARUDAPANEL_RELEASES:-}" ]; then
+  RELEASES=${GARUDAPANEL_RELEASES%/}
+  LATEST_URL="$RELEASES/LATEST"
+else
+  RELEASES=https://github.com/Nizwarax/garudapanel-installer/releases/download
+  LATEST_URL=https://github.com/Nizwarax/garudapanel-installer/releases/latest/download/LATEST
+fi
 
 # The release signing key (Ed25519), SHA-256 of the key:
 # 43db9c44fc57719f4a42dc3842500cac369233206b7752f3e13be002b1f74f89
@@ -101,7 +107,7 @@ main() {
     esac
   done
 
-  [ "$(id -u)" -eq 0 ] || die "run as root (for example: curl -fsSL https://get.garudapanel.my.id | sudo bash)"
+  [ "$(id -u)" -eq 0 ] || die "run as root (for example: sudo bash garudapanel-installer.sh)"
   [ "$(uname -s)" = Linux ] || die "GarudaPanel runs on Linux only"
   case "$(uname -m)" in
     x86_64 | amd64) arch=amd64 ;;
@@ -135,7 +141,7 @@ main() {
     verify_sum "$bundle" "$sums"
   else
     if [ -z "$version" ]; then
-      fetch "$RELEASES/LATEST" "$work/LATEST" || die "cannot reach $RELEASES (check the server's internet access)"
+      fetch "$LATEST_URL" "$work/LATEST" || die "cannot reach $LATEST_URL (check the server's internet access)"
       version=$(tr -d '[:space:]' <"$work/LATEST")
     fi
     [[ $version =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]] || die "invalid version \"$version\""
